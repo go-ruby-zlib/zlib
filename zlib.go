@@ -58,13 +58,14 @@ const (
 	Finish    = 4 // Zlib::FINISH
 )
 
-// Version strings MRI reports. VERSION is the Ruby zlib binding version and
-// ZlibVersion the underlying C library version; both are fixed strings here, set
-// to the values MRI 4.0.5 reports, so a host can surface Zlib::VERSION /
-// Zlib::ZLIB_VERSION without a C library.
+// Version strings a host surfaces as Zlib::VERSION / Zlib::ZLIB_VERSION. VERSION
+// is the Ruby zlib binding version (stable across MRI 4.0 builds). ZlibVersion
+// stands in for the linked C zlib library version, which in MRI varies by host
+// build (e.g. "1.2.12" or "1.3"); this port has no C zlib, so it reports a
+// representative constant rather than a build-specific one.
 const (
-	Version     = "3.2.3"  // Zlib::VERSION
-	ZlibVersion = "1.2.12" // Zlib::ZLIB_VERSION
+	Version     = "3.2.3"  // Zlib::VERSION (Ruby binding)
+	ZlibVersion = "1.2.12" // Zlib::ZLIB_VERSION (representative C-lib version)
 )
 
 // validLevel reports whether level is an accepted compression level (the

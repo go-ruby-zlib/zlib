@@ -147,7 +147,11 @@ var ErrStream, ErrBuf, ErrData, ErrGzipFile *Error
 | `DefaultCompression`          | `Zlib::DEFAULT_COMPRESSION`| -1    |
 | `DefaultStrategy` / `Filtered` / `HuffmanOnly` / `RLE` / `Fixed` | `Zlib::*_STRATEGY` / … | 0..4 |
 | `NoFlush` / `SyncFlush` / `FullFlush` / `Finish` | `Zlib::*_FLUSH` / `Zlib::FINISH` | 0/2/3/4 |
-| `Version` / `ZlibVersion`     | `Zlib::VERSION` / `Zlib::ZLIB_VERSION` | "3.2.3" / "1.2.12" |
+| `Version` / `ZlibVersion`     | `Zlib::VERSION` / `Zlib::ZLIB_VERSION` | "3.2.3" / "1.2.12"¹ |
+
+¹ `Version` is the Ruby binding version (stable). `ZlibVersion` stands in for the
+linked C zlib library version, which in MRI varies by host build ("1.2.12",
+"1.3", …); this pure-Go port has no C zlib and reports a representative constant.
 
 ## Tests & coverage
 

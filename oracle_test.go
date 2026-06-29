@@ -229,13 +229,17 @@ func TestOracleConstants(t *testing.T) {
 			t.Errorf("constant[%d] = %d, MRI = %d", i, w, n)
 		}
 	}
-	// Version strings.
+	// Version strings. Zlib::VERSION is the Ruby binding version and is stable
+	// across MRI 4.0 builds, so we assert it byte-exact. Zlib::ZLIB_VERSION is the
+	// linked C zlib library version, which varies by host build (e.g. "1.2.12"
+	// vs "1.3"); our pure-Go port has no C zlib, so we only require that MRI
+	// reports some non-empty version rather than pinning it.
 	vs := rubyZlib(t, bin, "print Zlib::VERSION, ',', Zlib::ZLIB_VERSION", nil)
 	parts := strings.Split(string(vs), ",")
 	if parts[0] != Version {
 		t.Errorf("Version = %q, MRI = %q", Version, parts[0])
 	}
-	if parts[1] != ZlibVersion {
-		t.Errorf("ZlibVersion = %q, MRI = %q", ZlibVersion, parts[1])
+	if len(parts) < 2 || parts[1] == "" {
+		t.Errorf("MRI reported no ZLIB_VERSION: %q", vs)
 	}
 }
