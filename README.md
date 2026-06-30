@@ -8,12 +8,16 @@
 [![Coverage](https://img.shields.io/badge/coverage-100%25-1a7f37)](#tests--coverage)
 
 **A pure-Go (no cgo) reimplementation of Ruby's [`zlib`](https://docs.ruby-lang.org/en/master/Zlib.html)
-standard library** — the MRI 4.0.5 `Zlib` module — built entirely on the Go
-standard library (`compress/zlib`, `compress/flate`, `compress/gzip`,
-`hash/crc32`, `hash/adler32`). It offers deflate / inflate, gzip, the CRC-32 and
-Adler-32 checksums (and their `combine` forms), and a streaming compressor /
-decompressor, so a host such as [go-embedded-ruby](https://github.com/go-embedded-ruby/ruby)
-can serve `require "zlib"` with **no C extension** and a static, **CGO=0** binary.
+standard library** — the MRI 4.0.5 `Zlib` module. The DEFLATE engine is
+[`klauspost/compress`](https://github.com/klauspost/compress) (its drop-in
+`compress/flate`, `compress/zlib` and `compress/gzip` packages) — a pure-Go,
+**CGO=0**, build-from-source dependency that is **far faster** than the standard
+library's `flate` (≈10× on `Deflate`); the checksums stay on the standard
+library's `hash/crc32` / `hash/adler32`, which already use SIMD assembly on
+amd64/arm64. It offers deflate / inflate, gzip, the CRC-32 and Adler-32 checksums
+(and their `combine` forms), and a streaming compressor / decompressor, so a host
+such as [go-embedded-ruby](https://github.com/go-embedded-ruby/ruby) can serve
+`require "zlib"` with **no C extension** and a static, **CGO=0** binary.
 
 It is the zlib backend for go-embedded-ruby but is a **standalone, reusable**
 module with no dependency on the Ruby runtime — a sibling of
@@ -152,6 +156,27 @@ var ErrStream, ErrBuf, ErrData, ErrGzipFile *Error
 ¹ `Version` is the Ruby binding version (stable). `ZlibVersion` stands in for the
 linked C zlib library version, which in MRI varies by host build ("1.2.12",
 "1.3", …); this pure-Go port has no C zlib and reports a representative constant.
+
+## Performance
+
+The DEFLATE engine is [`klauspost/compress`](https://github.com/klauspost/compress)
+rather than the standard library's `compress/flate`, whose `DefaultCompression`
+match-finder is markedly slower on realistic data. Go-level throughput on a
+1 MiB semi-compressible payload (`go test -bench`, Apple M-class, Go 1.26.4):
+
+| Operation | stdlib `compress/flate` | klauspost | Speedup |
+|-----------|------------------------:|----------:|--------:|
+| `Deflate` (default level) | 30 MB/s  | 299 MB/s | ≈10× |
+| `Inflate`                 | 470 MB/s | 521 MB/s | ≈1.1× |
+| `Crc32` (stdlib, unchanged) | 10.4 GB/s | 10.4 GB/s | — |
+| deflate + inflate + crc32 | 28 MB/s  | 187 MB/s | ≈6.7× |
+
+The combined deflate+inflate+crc32 workload — the one previously measured ~6.8×
+slower than MRI from `rbgo` — is now ≈6.7× faster than the old stdlib path, which
+closes essentially all of that gap. Checksums are unchanged (stdlib `hash/crc32`
+already ships SIMD assembly on amd64/arm64). Wire compatibility is unaffected:
+the output is still a standard zlib/gzip/raw-DEFLATE stream that MRI's `Zlib`
+inflates, validated by the differential MRI oracle below.
 
 ## Tests & coverage
 

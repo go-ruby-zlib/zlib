@@ -6,8 +6,9 @@ package zlib
 
 import (
 	"bytes"
-	"compress/zlib"
 	"io"
+
+	"github.com/klauspost/compress/zlib"
 )
 
 // Deflater is the streaming compressor, mirroring a Zlib::Deflate instance:
