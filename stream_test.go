@@ -87,7 +87,8 @@ func TestDeflaterErrors(t *testing.T) {
 	if _, err := d.Deflate([]byte("x"), 99); !errors.Is(err, ErrStream) {
 		t.Errorf("bad flush err = %v, want ErrStream", err)
 	}
-	// After finishing, both Deflate and Finish reject further work.
+	// After finishing, Deflate rejects further work (MRI raises Zlib::StreamError
+	// from Zlib::Deflate#deflate after finish).
 	d2 := NewDeflater(DefaultCompression)
 	if _, err := d2.Finish(); err != nil {
 		t.Fatal(err)
@@ -95,8 +96,37 @@ func TestDeflaterErrors(t *testing.T) {
 	if _, err := d2.Deflate([]byte("x"), NoFlush); !errors.Is(err, ErrStream) {
 		t.Errorf("deflate after finish err = %v, want ErrStream", err)
 	}
-	if _, err := d2.Finish(); !errors.Is(err, ErrStream) {
-		t.Errorf("double finish err = %v, want ErrStream", err)
+}
+
+// TestDeflaterReFinish asserts the MRI-tolerant behavior: re-finishing an
+// already-finished Deflater returns an empty slice (no error), matching MRI's
+// Zlib::Deflate#finish, which returns "" on the second call rather than raising.
+func TestDeflaterReFinish(t *testing.T) {
+	d := NewDeflater(DefaultCompression)
+	if _, err := d.Deflate([]byte("x"), NoFlush); err != nil {
+		t.Fatal(err)
+	}
+	first, err := d.Finish()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) == 0 {
+		t.Errorf("first Finish produced no bytes")
+	}
+	// Second and third Finish: MRI returns "" (empty, non-nil), no error.
+	second, err := d.Finish()
+	if err != nil {
+		t.Errorf("re-finish err = %v, want nil", err)
+	}
+	if second == nil || len(second) != 0 {
+		t.Errorf("re-finish = %v, want empty non-nil slice", second)
+	}
+	third, err := d.Finish()
+	if err != nil || len(third) != 0 {
+		t.Errorf("third finish = %v, %v, want empty, nil", third, err)
+	}
+	if !d.Finished() {
+		t.Error("Finished = false after re-finish")
 	}
 }
 
@@ -138,9 +168,22 @@ func TestInflaterStream(t *testing.T) {
 	if !inf.Finished() {
 		t.Error("not finished")
 	}
-	// Inflating again after finish is rejected.
-	if _, err := inf.Inflate(comp); !errors.Is(err, ErrStream) {
-		t.Errorf("inflate after finish err = %v, want ErrStream", err)
+	// Inflating again after the stream end is tolerated: MRI returns "" for any
+	// further input (empty or not), so we return an empty non-nil slice, no error.
+	again, err := inf.Inflate([]byte{})
+	if err != nil {
+		t.Errorf("inflate empty after finish err = %v, want nil", err)
+	}
+	if again == nil || len(again) != 0 {
+		t.Errorf("inflate empty after finish = %v, want empty non-nil slice", again)
+	}
+	// Even non-empty input after finish yields "" rather than raising, as MRI does.
+	more, err := inf.Inflate(comp)
+	if err != nil {
+		t.Errorf("inflate data after finish err = %v, want nil", err)
+	}
+	if len(more) != 0 {
+		t.Errorf("inflate data after finish = %q, want empty", more)
 	}
 }
 

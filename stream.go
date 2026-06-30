@@ -83,10 +83,13 @@ func (d *Deflater) Deflate(data []byte, flush int) ([]byte, error) {
 
 // Finish closes the stream and returns any remaining compressed bytes, mirroring
 // Zlib::Deflate#finish. After Finish, Finished reports true and further Deflate
-// calls return ErrStream.
+// calls return ErrStream. Calling Finish again on an already-finished Deflater is
+// tolerated and returns an empty slice (no error), matching MRI, whose
+// Zlib::Deflate#finish returns "" when re-invoked rather than raising.
 func (d *Deflater) Finish() ([]byte, error) {
 	if d.finished {
-		return nil, ErrStream
+		// MRI tolerates re-finishing: the second #finish returns "".
+		return []byte{}, nil
 	}
 	_ = d.w.Close() // bytes.Buffer sink never errors
 	d.finished = true
@@ -135,9 +138,15 @@ func NewInflater() *Inflater {
 // complete zlib stream by the time output is required; a complete stream (the
 // common one-shot streaming use) decodes fully and marks the inflater finished.
 // Corrupt input returns ErrData.
+//
+// Calling Inflate on an already-finished Inflater is tolerated and returns an
+// empty slice (no error), matching MRI: once the stream end has been reached,
+// Zlib::Inflate#inflate returns "" for any further input (including non-empty
+// data) rather than raising.
 func (inf *Inflater) Inflate(data []byte) ([]byte, error) {
 	if inf.finished {
-		return nil, ErrStream
+		// MRI tolerates inflate after the stream end: returns "".
+		return []byte{}, nil
 	}
 	inf.in.Write(data)
 	r, err := zlib.NewReader(bytes.NewReader(inf.in.Bytes()))
