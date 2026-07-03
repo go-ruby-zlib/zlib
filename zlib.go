@@ -29,7 +29,6 @@ import (
 
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
-	"github.com/klauspost/compress/zlib"
 )
 
 // Compression levels — the values MRI exposes as Zlib::NO_COMPRESSION etc. They
@@ -89,11 +88,14 @@ func Deflate(data []byte, level int) ([]byte, error) {
 		return nil, ErrStream
 	}
 	var buf bytes.Buffer
-	// level is validated, so NewWriterLevel cannot error; Write/Close to a
-	// bytes.Buffer cannot fail either, so no error path is reachable here.
-	w, _ := zlib.NewWriterLevel(&buf, level)
+	// A pooled writer for this level, Reset onto buf, produces bytes identical to
+	// a freshly constructed one (Reset fully reinitialises the DEFLATE engine)
+	// while avoiding the ~1 MB per-call compressor allocation. Write/Close to a
+	// bytes.Buffer cannot fail, so no error path is reachable here.
+	w := getDeflateWriter(&buf, level)
 	_, _ = w.Write(data)
 	_ = w.Close()
+	putDeflateWriter(w, level)
 	return buf.Bytes(), nil
 }
 
@@ -101,7 +103,9 @@ func Deflate(data []byte, level int) ([]byte, error) {
 // bad zlib header or truncated/corrupt body returns ErrData (MRI's
 // Zlib::DataError).
 func Inflate(data []byte) ([]byte, error) {
-	r, err := zlib.NewReader(bytes.NewReader(data))
+	// A pooled reader, Reset onto data, reuses the ~44 KB flate dictionary decoder
+	// across calls; Reset re-reads the header, so a bad header still surfaces here.
+	r, err := getInflateReader(data)
 	if err != nil {
 		return nil, wrapData(err)
 	}
@@ -110,6 +114,7 @@ func Inflate(data []byte) ([]byte, error) {
 		return nil, wrapData(err) // bad header check, truncated body, or wrong adler
 	}
 	_ = r.Close() // ReadAll already surfaced any checksum error
+	inflateReaderPool.Put(r)
 	return out, nil
 }
 
