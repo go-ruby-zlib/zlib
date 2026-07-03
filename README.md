@@ -12,9 +12,12 @@ standard library** — the MRI 4.0.5 `Zlib` module. The DEFLATE engine is
 [`klauspost/compress`](https://github.com/klauspost/compress) (its drop-in
 `compress/flate`, `compress/zlib` and `compress/gzip` packages) — a pure-Go,
 **CGO=0**, build-from-source dependency that is **far faster** than the standard
-library's `flate` (≈10× on `Deflate`); the checksums stay on the standard
-library's `hash/crc32` / `hash/adler32`, which already use SIMD assembly on
-amd64/arm64. It offers deflate / inflate, gzip, the CRC-32 and Adler-32 checksums
+library's `flate` (≈10× on `Deflate`); the checksums are SIMD-accelerated —
+CRC-32 folds with a carryless-multiply kernel (`internal/crc32simd`, arm64
+PMULL fold-by-eight; amd64/ppc64le/s390x defer to the hardware-assisted standard
+library) and Adler-32 uses [`go-simd/adler32`](https://github.com/go-simd/adler32),
+each bit-identical to `hash/crc32` / `hash/adler32`. It offers deflate / inflate,
+gzip, the CRC-32 and Adler-32 checksums
 (and their `combine` forms), and a streaming compressor / decompressor, so a host
 such as [go-embedded-ruby](https://github.com/go-embedded-ruby/ruby) can serve
 `require "zlib"` with **no C extension** and a static, **CGO=0** binary.
@@ -168,15 +171,18 @@ match-finder is markedly slower on realistic data. Go-level throughput on a
 |-----------|------------------------:|----------:|--------:|
 | `Deflate` (default level) | 30 MB/s  | 299 MB/s | ≈10× |
 | `Inflate`                 | 470 MB/s | 521 MB/s | ≈1.1× |
-| `Crc32` (stdlib, unchanged) | 10.4 GB/s | 10.4 GB/s | — |
+| `Crc32` (arm64 PMULL fold-by-8) | 10.4 GB/s | ≈51 GB/s | ≈4.3× |
 | deflate + inflate + crc32 | 28 MB/s  | 187 MB/s | ≈6.7× |
 
 The combined deflate+inflate+crc32 workload — the one previously measured ~6.8×
 slower than MRI from `rbgo` — is now ≈6.7× faster than the old stdlib path, which
-closes essentially all of that gap. Checksums are unchanged (stdlib `hash/crc32`
-already ships SIMD assembly on amd64/arm64). Wire compatibility is unaffected:
-the output is still a standard zlib/gzip/raw-DEFLATE stream that MRI's `Zlib`
-inflates, validated by the differential MRI oracle below.
+closes essentially all of that gap. CRC-32 additionally gained a carryless-multiply
+kernel: on arm64 the standard library's IEEE path is a latency-bound serial
+`CRC32X`, and the fold-by-eight PMULL kernel here runs ≈4.3× faster (≈51 GB/s),
+now beating MRI's C zlib and YJIT on the library-level benchmark (see
+[docs/performance](https://go-ruby-zlib.github.io/docs/performance/)). Wire
+compatibility is unaffected: the output is still a standard zlib/gzip/raw-DEFLATE
+stream that MRI's `Zlib` inflates, validated by the differential MRI oracle below.
 
 ## Tests & coverage
 
