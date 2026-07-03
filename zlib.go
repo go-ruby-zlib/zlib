@@ -6,10 +6,12 @@
 // Ruby's `zlib` standard library (the MRI 4.0.5 `Zlib` module). The DEFLATE
 // engine is github.com/klauspost/compress (its drop-in compress/flate,
 // compress/zlib and compress/gzip packages) — a pure-Go, CGO=0, build-from-source
-// dependency that is substantially faster than the standard library's flate; the
-// checksums stay on the standard library's hash/crc32 and hash/adler32 (which
-// already use SIMD assembly on amd64/arm64). So a host such as go-embedded-ruby
-// can offer `require "zlib"` with no C extension and a static, CGO=0 binary.
+// dependency that is substantially faster than the standard library's flate. The
+// checksums are SIMD-accelerated: CRC-32 folds with the host's carryless-multiply
+// unit (internal/crc32simd, PCLMULQDQ/PMULL) and Adler-32 uses go-simd/adler32,
+// each a bit-exact drop-in for the standard library's kernel. So a host such as
+// go-embedded-ruby can offer `require "zlib"` with no C extension and a static,
+// CGO=0 binary.
 //
 // The checksums (Crc32 / Adler32 and their combine forms) are byte-exact with
 // MRI: a value computed here equals the value MRI prints for the same input.
@@ -23,10 +25,11 @@ package zlib
 
 import (
 	"bytes"
-	"hash/adler32"
 	"hash/crc32"
 	"io"
 
+	adler32simd "github.com/go-simd/adler32"
+	"github.com/go-ruby-zlib/zlib/internal/crc32simd"
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
 )
@@ -158,7 +161,7 @@ func GzipDecompress(data []byte) ([]byte, error) {
 // the plain checksum; passing a running value lets a caller checksum a stream in
 // pieces. The value is byte-exact with MRI.
 func Crc32(data []byte, seed uint32) uint32 {
-	return crc32.Update(seed, crc32.IEEETable, data)
+	return crc32simd.Update(seed, data)
 }
 
 // Adler32 returns the Adler-32 checksum of data continued from seed, mirroring
@@ -169,7 +172,7 @@ func Crc32(data []byte, seed uint32) uint32 {
 // exposes only the from-scratch form.
 func Adler32(data []byte, seed uint32) uint32 {
 	if seed == adler32Identity {
-		return adler32.Checksum(data)
+		return adler32simd.Checksum(data)
 	}
 	s1 := seed & 0xffff
 	s2 := (seed >> 16) & 0xffff
