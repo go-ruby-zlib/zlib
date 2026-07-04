@@ -13,7 +13,7 @@ standard library** — the MRI 4.0.5 `Zlib` module. The DEFLATE engine is
 `compress/flate`, `compress/zlib` and `compress/gzip` packages) — a pure-Go,
 **CGO=0**, build-from-source dependency that is **far faster** than the standard
 library's `flate` (≈10× on `Deflate`); the checksums are SIMD-accelerated —
-CRC-32 folds with a carryless-multiply kernel (`internal/crc32simd`, arm64
+CRC-32 folds with a carryless-multiply kernel ([`go-simd/crc32`](https://github.com/go-simd/crc32), arm64
 PMULL fold-by-eight; amd64/ppc64le/s390x defer to the hardware-assisted standard
 library) and Adler-32 uses [`go-simd/adler32`](https://github.com/go-simd/adler32),
 each bit-identical to `hash/crc32` / `hash/adler32`. It offers deflate / inflate,

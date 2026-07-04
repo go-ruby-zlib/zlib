@@ -8,7 +8,7 @@
 // compress/zlib and compress/gzip packages) — a pure-Go, CGO=0, build-from-source
 // dependency that is substantially faster than the standard library's flate. The
 // checksums are SIMD-accelerated: CRC-32 folds with the host's carryless-multiply
-// unit (internal/crc32simd, PCLMULQDQ/PMULL) and Adler-32 uses go-simd/adler32,
+// unit (go-simd/crc32, PCLMULQDQ/PMULL) and Adler-32 uses go-simd/adler32,
 // each a bit-exact drop-in for the standard library's kernel. So a host such as
 // go-embedded-ruby can offer `require "zlib"` with no C extension and a static,
 // CGO=0 binary.
@@ -29,7 +29,7 @@ import (
 	"io"
 
 	adler32simd "github.com/go-simd/adler32"
-	"github.com/go-ruby-zlib/zlib/internal/crc32simd"
+	crc32simd "github.com/go-simd/crc32"
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
 )
@@ -161,7 +161,7 @@ func GzipDecompress(data []byte) ([]byte, error) {
 // the plain checksum; passing a running value lets a caller checksum a stream in
 // pieces. The value is byte-exact with MRI.
 func Crc32(data []byte, seed uint32) uint32 {
-	return crc32simd.Update(seed, data)
+	return crc32simd.Update(seed, crc32simd.IEEETable, data)
 }
 
 // Adler32 returns the Adler-32 checksum of data continued from seed, mirroring
