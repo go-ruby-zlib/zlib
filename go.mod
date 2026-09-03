@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/go-simd/adler32 v0.0.0-20260830125149-80204539980f
-	github.com/klauspost/compress v1.19.2
+	github.com/klauspost/compress v1.20.0
 )
 
 require (
