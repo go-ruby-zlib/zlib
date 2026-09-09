@@ -8,6 +8,6 @@ require (
 )
 
 require (
-	github.com/go-simd/crc32 v0.0.0-20260903220012-5f164e0e0487
-	golang.org/x/sys v0.47.0 // indirect
+	github.com/go-simd/crc32 v0.0.0-20260908181101-5e83f8649a72
+	golang.org/x/sys v0.48.0 // indirect
 )
