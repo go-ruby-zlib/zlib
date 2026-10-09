@@ -4,6 +4,8 @@ github.com/go-simd/adler32 v0.1.0 h1:NTf8Pevlax8k7GV0qAS2NwmUM/Nm8q4sUERwDaCetpA
 github.com/go-simd/adler32 v0.1.0/go.mod h1:jtS28q9El2JeCBxbkS7wcn0ggOoArDRJB5qWnVPl+pk=
 github.com/go-simd/crc32 v0.0.0-20260903220012-5f164e0e0487 h1:6JZ4TKf3j6y7xS9meu2MBQZHkkeebFWiQo8x2htKfd0=
 github.com/go-simd/crc32 v0.0.0-20260903220012-5f164e0e0487/go.mod h1:lickteAl0z3L24ypOqBe0AwoHPMMxxpYcxJu72aO1kw=
+github.com/go-simd/crc32 v0.0.0-20261005012203-5063678c55e9 h1:JMO4e1oS5vpMkemxnkoyLi/Uts/BtGxeZsfgi9nHjOA=
+github.com/go-simd/crc32 v0.0.0-20261005012203-5063678c55e9/go.mod h1:BN1tY5F5ELQfqinaA5vvzrHunmK3qJ8uf3qY/UGamEA=
 github.com/klauspost/compress v1.20.1 h1:T7kKElXUMXrUJ2E9QhQhxFtcK5rPyLdsGZvdbLMPdiQ=
 github.com/klauspost/compress v1.20.1/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
 github.com/mhr3/adler32-simd v0.3.0 h1:4CdhRQdivbqK8X1rGRsd50n48hUFtzQEd5pBzndgnC0=
